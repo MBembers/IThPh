@@ -2,21 +2,19 @@
 #include <stdlib.h>
 // const float one_sixth  = 0x1.555556p-3f; // float 1/6
 // const double one_sixth = 0x1.5555555555555p-3; // double 1/6
-float RK4(float f, float x, float dt, float(*dfdx)(float,float)){
-	const float one_sixth = 0x1.555556p-3f;
-	float k1 = dfdx(x,f);
-	float k2 = dfdx(x+0.5*dt,f+0.5*dt*k1);
-	float k3 = dfdx(x+0.5*dt,f+0.5*dt*k2);
-	float k4 = dfdx(x+dt,f+dt*k3);
-	return one_sixth*(k1+2*k2+2*k3+k4);
-}
 
-float dxdt(float t, float x){
-	return -1e-3*x;
-}
+// dfdt func:
+/*
+ * Auto-generated function to compute derivatives
+ */
 
-float dvdt(float t, float x){
-	return 0.0;
+// Simple pendulum
+void func(float* q, float* dq, float* _dq, float* _ddq, float t, size_t N) {
+    // Auto-generated Euler-Lagrange Equations using sympy.physics.mechanics
+    // Constants have been collapsed into their values.
+    _dq[0] = dq[0];
+    _ddq[0] = -9.8100000000000005*sin(q[0]);
+return;
 }
 
 
@@ -96,9 +94,13 @@ void RK4_1D(float* x, float* v, float* dx, float* dv, float t, float dt,
  */
 void next_1D(float* coord, float* vel, float* new_coord, float* new_vel, float dt, size_t N){
 	/* Calculating new coordinates */
+	float dx[N];
+	float dv[N];
+	RK4_1D(coord, vel, dx, dv, 0.0f, dt, &func, N);
+	
 	for(size_t i=0U; i<N; ++i){
-		new_coord[i] = coord[i] + RK4(coord[i],vel[i],dt,&dxdt);
-		new_vel[i] = vel[i] + RK4(coord[i],vel[i],dt,&dvdt);
+		new_coord[i] = coord[i] + dx[i];
+		new_vel[i] = vel[i] + dv[i];
 	}
 	return;
 }
@@ -195,14 +197,19 @@ void RK4_2D(Vector2D* x, Vector2D* v, Vector2D* dx, Vector2D* dv, float t, float
 
 void next_2D(Vector2D* coord, Vector2D* vel, Vector2D* new_coord, Vector2D* new_vel, float dt, size_t N){
 	/* Calculating new coordinates */
-	for(size_t i=0U; i<N; ++i){
-		new_coord[i].x = coord[i].x + RK4(coord[i].x,vel[i].x,dt,&dxdt);
-		new_coord[i].y = coord[i].y + RK4(coord[i].y,vel[i].y,dt,&dxdt);
-
-		new_vel[i].x = vel[i].x + RK4(coord[i].x,vel[i].x,dt,&dvdt);
-		new_vel[i].y = vel[i].y + RK4(coord[i].y,vel[i].y,dt,&dvdt);
+	int size = N * sizeof(Vector2D);
+	Vector2D* dx = malloc(size);
+	Vector2D* dv = malloc(size);
+	RK4_2D(coord, vel, dx, dv, 0.0f, dt, &func, N);
+	for (size_t i = 0; i < N; i++)
+	{
+		new_coord[i].x = coord[i].x + dx[i].x * dt;
+		new_coord[i].y = coord[i].y + dx[i].y * dt;
+		new_vel[i].x = vel[i].x + dv[i].x * dt;
+		new_vel[i].y = vel[i].y + dv[i].y * dt;
 	}
-	return;
+	free(dx);
+	free(dv);
 }
 
 /* --- 3D Structures and Functions ---
@@ -306,15 +313,100 @@ void RK4_3D(Vector3D* x, Vector3D* v, Vector3D* dx, Vector3D* dv, float t, float
 
 void next_3D(Vector3D* coord, Vector3D* vel, Vector3D* new_coord, Vector3D* new_vel, float dt, size_t N){
 	/* Calculating new coordinates */
-	for(size_t i=0U; i<N; ++i){
-		new_coord[i].x = coord[i].x + RK4(coord[i].x,vel[i].x,dt,&dxdt);
-		new_coord[i].y = coord[i].y + RK4(coord[i].y,vel[i].y,dt,&dxdt);
-		new_coord[i].z = coord[i].z + RK4(coord[i].z,vel[i].z,dt,&dxdt);
-
-		new_vel[i].x = vel[i].x + RK4(coord[i].x,vel[i].x,dt,&dvdt);
-		new_vel[i].y = vel[i].y + RK4(coord[i].y,vel[i].y,dt,&dvdt);
-		new_vel[i].z = vel[i].z + RK4(coord[i].z,vel[i].z,dt,&dvdt);
+	int size = N * sizeof(Vector3D);
+	Vector3D* dx = malloc(size);
+	Vector3D* dv = malloc(size);
+	RK4_3D(coord, vel, dx, dv, 0.0f, dt, &func, N);
+	for (size_t i = 0; i < N; ++i)
+	{
+		new_coord[i].x = coord[i].x + dx[i].x * dt;
+		new_coord[i].y = coord[i].y + dx[i].y * dt;
+		new_coord[i].z = coord[i].z + dx[i].z * dt;
+		new_vel[i].x = vel[i].x + dv[i].x * dt;
+		new_vel[i].y = vel[i].y + dv[i].y * dt;
+		new_vel[i].z = vel[i].z + dv[i].z * dt;
 	}
+	free(dx);
+	free(dv);
 	return;
 }
 
+/*
+*
+*
+	General solver for N generalized coordinates (floats q and dq)
+*
+*
+*/
+
+void RK4_N(float* q, float* dq, float* q_dot, float* dq_dot, float t, float dt,
+	    void(*dfdt)(float*,float*,float*,float*,float,size_t), size_t N){
+	/* RK4 Implementation in N dimensions
+	 * q = generalized coordinates array
+	 * dq = generalized velocities array
+	 * dq_out = derivative of generalized coordinates array
+	 * ddq_out = derivative of generalized velocities array
+	 * t = current time
+	 * dt = time step
+	 * dfdt = function that computes derivatives
+	 * arguments of dfdt: (q, dq, _dq, _ddq, t, N)
+	 * N = number of generalized coordinates
+	 */
+
+	// Temporary arrays	
+	const float one_sixth = 0x1.555556p-3f;
+	size_t size = N * sizeof(float);
+	float* tmp_q = malloc(size);
+	float* tmp_dq = malloc(size);
+
+	// k1, k2, k3, k4 arrays for position and velocity
+	float* k1_q = malloc(size); float* k1_dq = malloc(size);
+	float* k2_q = malloc(size); float* k2_dq = malloc(size);
+	float* k3_q = malloc(size); float* k3_dq = malloc(size);
+	float* k4_q = malloc(size); float* k4_dq = malloc(size);
+
+	// Calculate k1, k2, k3, k4
+	dfdt(q,dq,k1_q,k1_dq,t,N);
+	for(size_t i=0U; i<N; ++i){
+		tmp_q[i] = q[i] + 0.5f * dt * k1_q[i];
+		tmp_dq[i] = dq[i] + 0.5f * dt * k1_dq[i];
+	}
+	dfdt(tmp_q,tmp_dq,k2_q,k2_dq,t+0.5f*dt,N);
+	for(size_t i=0U; i<N; ++i){
+		tmp_q[i] = q[i] + 0.5f * dt * k2_q[i];
+		tmp_dq[i] = dq[i] + 0.5f * dt * k2_dq[i];
+	}
+	dfdt(tmp_q,tmp_dq,k3_q,k3_dq,t+0.5f*dt,N);
+	for(size_t i=0U; i<N; ++i){
+		tmp_q[i] = q[i] + dt * k3_q[i];
+		tmp_dq[i] = dq[i] + dt * k3_dq[i];
+	}
+	dfdt(tmp_q,tmp_dq,k4_q,k4_dq,t+dt,N);
+	// Combine to get final dq and ddq
+	for(size_t i=0U; i<N; ++i){
+		q_dot[i] = one_sixth * (k1_q[i] + 2.0f * k2_q[i] + 2.0f * k3_q[i] + k4_q[i]);
+		dq_dot[i] = one_sixth * (k1_dq[i] + 2.0f * k2_dq[i] + 2.0f * k3_dq[i] + k4_dq[i]);
+	}
+	// Cleanup
+	free(tmp_q); free(tmp_dq);
+	free(k1_q); free(k1_dq);
+	free(k2_q); free(k2_dq);
+	free(k3_q); free(k3_dq);
+	free(k4_q); free(k4_dq);
+	return;
+}
+
+void next_N(float* q, float* dq, float* new_q, float* new_dq, float dt, size_t N){
+	/* Calculating new generalized coordinates */
+	int size = N * sizeof(float);
+	float* q_dot = malloc(size);
+	float* dq_dot = malloc(size);
+	RK4_N(q, dq, q_dot, dq_dot, 0.0f, dt, &func, N);
+	for (size_t i = 0; i < N; i++)
+	{
+		new_q[i] = q[i] + q_dot[i] * dt;
+		new_dq[i] = dq[i] + dq_dot[i] * dt;
+	}
+	free(q_dot);
+	free(dq_dot);
+}
