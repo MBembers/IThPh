@@ -3,6 +3,7 @@ from typing import List
 import sympy as sp
 from sympy.physics.mechanics import LagrangesMethod, dynamicsymbols
 from sympy.printing.c import ccode
+from config import lagrangian
 
 
 class LagrangianToC:
@@ -105,93 +106,18 @@ class LagrangianToC:
         lines.append("}")
 
         return "\n".join(lines)
+    
+    def config_generate():
+        L, q = lagrangian()
+        gen = LagrangianToC(L, q)
+        str = gen.generate_c_function("func", collapse_constants=True)
+        with open("../solver/func_generated.txt", "w") as file:
+            file.write(str)
+        return str
 
 # ==========================================
 # run as: python3 -m lagrangian
 # ==========================================
 
-#
-# Example usages of LagrangianToC:
-#
-
-
-def simple_pendulum_example():
-
-    # --- Example 1: Simple Pendulum ---
-    print("--- Generating Code for Simple Pendulum ---")
-
-    # 1. Define Dynamics Symbols (Functions of time)
-    theta = dynamicsymbols('theta')
-    theta_dot = theta.diff()
-
-    # 2. Define Constants
-    m, g, l = sp.symbols('m g l')
-    g = 9.81  # gravitational acceleration
-    m = 1.0   # mass
-    l = 1.0   # length of pendulum
-
-    # 3. Define Energies
-    # Kinetic T = 1/2 m (l * theta_dot)^2
-    T = sp.Rational(1, 2) * m * (l * theta_dot)**2
-    # Potential V = m g l (1 - cos(theta))
-    V = m * g * l * (1 - sp.cos(theta))
-
-    L = T - V
-
-    # 4. Generate
-    # Note: We only pass L and the coordinate list [theta]
-    gen = LagrangianToC(L, [theta])
-    # print(gen.generate_c_function("func"))
-    # print("\n")
-    output = gen.generate_c_function(
-        "func", collapse_constants=True)
-    return output
-
-
-def double_pendulum_example():
-
-    # --- Example 2: Double Pendulum (Demonstrating Matrix Solving Capability) ---
-    print("--- Generating Code for Double Pendulum ---")
-
-    # Coordinates
-    q1, q2 = dynamicsymbols('q1 q2')
-    q1d, q2d = q1.diff(), q2.diff()
-
-    # Constants
-    m1, m2, l1, l2 = sp.symbols('m1 m2 l1 l2')
-    g = sp.symbols('g')
-    m1 = 1.0
-    m2 = 1.0
-    l1 = 1.0
-    l2 = 1.0
-    g = 9.81
-
-    # Position of mass 1
-    x1 = l1 * sp.sin(q1)
-    y1 = -l1 * sp.cos(q1)
-
-    # Position of mass 2
-    x2 = x1 + l2 * sp.sin(q2)
-    y2 = y1 - l2 * sp.cos(q2)
-
-    # Kinetic Energy
-    v1_sq = x1.diff(dynamicsymbols._t)**2 + y1.diff(dynamicsymbols._t)**2
-    v2_sq = x2.diff(dynamicsymbols._t)**2 + y2.diff(dynamicsymbols._t)**2
-
-    T_dp = 0.5 * m1 * v1_sq + 0.5 * m2 * v2_sq
-
-    # Potential Energy
-    V_dp = m1*g*y1 + m2*g*y2
-
-    L_dp = T_dp - V_dp
-
-    gen2 = LagrangianToC(L_dp, [q1, q2])
-    output = gen2.generate_c_function(
-        "func", collapse_constants=True)
-    return output
-
-
 if __name__ == "__main__":
-    with open("../solver/func_generated.txt", "w") as file:
-        file.write("// Double Pendulum Example\n")
-        file.write(double_pendulum_example())
+    LagrangianToC.config_generate()

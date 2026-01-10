@@ -9,23 +9,11 @@ import numpy as np
 import cprototype as cp
 import animation as anim
 from ccompiler import CSharedLibraryCompiler
+from lagrangian import LagrangianToC
+import config
 
-# === CONSTANTS ===
-if len(argv) > 1:
-    try:
-        # Number of particles read from command line
-        NUM_OBJECTS = int(argv[1])
-    except ValueError as e:
-        print(e)
-        NUM_OBJECTS = np.random.randint(1, 23)
-        print(
-            f"Number of objects is now set to randomly chosen: {NUM_OBJECTS}")
-else:
-    NUM_OBJECTS = 1      # Number of particles in the simulation
-RADIUS = 2.0    # Initial radius for particle placement
-dt = 0.01   # Timestep for the simulation
-
-print(f"Running simulation with {NUM_OBJECTS} objects.")
+# === GENERATING C CODE FROM LAGRANGIAN ===
+LagrangianToC.config_generate()
 
 # === C LIBRARY LOADING ===
 # Define the path to the compiled C library (.so file)
@@ -35,16 +23,15 @@ ccompiler = CSharedLibraryCompiler(source_file="../solver/solver.c")
 __solver_path = ccompiler.compile()
 
 # === INITIAL CONDITIONS ===
-# CIRCLE
-# positions = [_libsolver.vector(x=RADIUS * np.cos(2 * np.pi * i / NUM_OBJECTS),
-#                                y=RADIUS * np.sin(2 * np.pi * i / NUM_OBJECTS))
-#              for i in range(NUM_OBJECTS)]
-# velocities = [_libsolver.vector(x=0, y=0) for i in range(NUM_OBJECTS)]
-
 # DOUBLE PENDULUM
-_libsolver = cp.EOMSolver(__solver_path, NUM_OBJECTS, DIMENSIONS=0, NUM_COORDS=2)
-q = [_libsolver.vector(np.pi/2), _libsolver.vector(np.pi)]
-dq = [_libsolver.vector(0), _libsolver.vector(0)]
+_libsolver = cp.EOMSolver(__solver_path, NUM_OBJECTS=config.NUMBER_OF_OBJECTS, 
+                          DIMENSIONS=config.DIMENSIONS, NUM_COORDS=config.NUMBER_OF_COORDINATES)
+# AUTOMATIC GENERATION ONLY FOR GENERALIZED COORDINATES!!!
+q = []
+dq = []
+for i in range(config.NUMBER_OF_COORDINATES * config.NUMBER_OF_OBJECTS):
+    q.append(_libsolver.vector(config.INITIAL_q[i]))
+    dq.append(_libsolver.vector(config.INITIAL_dq[i]))
 
 # === PLOTTING SETUP ===
 ani = anim.Animation2D(vector_factory=_libsolver.vector,
@@ -52,12 +39,14 @@ ani = anim.Animation2D(vector_factory=_libsolver.vector,
                         next_step=_libsolver.next_step,
                         positions=q,
                         velocities=dq,
-                        dt=dt,
-                        DIMENSIONS=0,
-                        NUM_OBJECTS=NUM_OBJECTS,
-                        POINTS_PER_OBJECT=2,
-                        change_coordinates=anim.Animation2D.double_pendulum_coordinates)  # Each double pendulum has 2 points
+                        dt=config.DT,
+                        DIMENSIONS=config.DIMENSIONS,
+                        NUM_OBJECTS=config.NUMBER_OF_OBJECTS,
+                        POINTS_PER_OBJECT=config.POINTS_PER_OBJECT,
+                        change_coordinates=config.coordinates_transform)  # Each double pendulum has 2 points
 ani.create_canvas()
 
 # === RUN ANIMATION ===
+print(f"Running simulation with {config.NUMBER_OF_OBJECTS} \
+      objects and {ani.POINTS_PER_OBJECT * config.NUMBER_OF_OBJECTS} points.")
 ani.run_animation()

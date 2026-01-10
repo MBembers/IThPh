@@ -150,27 +150,3 @@ class Animation2D:
     def update_data(self, new_data):
         for i, coord in enumerate(new_data):
             self.data[i, :] = [coord[0], coord[1]]
-
-    # Coordinate conversion functions:
-    # TODO: add more conversion functions as needed
-    # TODO: add config options to select conversion functions
-    @staticmethod
-    def double_pendulum_coordinates(positions):
-        """
-        Convert the list of angles (theta1, theta2) into (x, y) coordinates
-        for plotting a double pendulum.
-        Returns a list of [x, y] for each mass.
-        """
-        r1 = 1.0  # Length of first rod
-        r2 = 1.0  # Length of second rod
-        coords = []
-        for i in range(len(positions)//2):
-            theta1 = positions[2*i]
-            theta2 = positions[2*i + 1]
-            x1 = r1 * np.sin(theta1)
-            y1 = -r1 * np.cos(theta1)
-            x2 = x1 + r2 * np.sin(theta2)
-            y2 = y1 - r2 * np.cos(theta2)
-            coords.append([x1, y1])
-            coords.append([x2, y2])
-        return coords
