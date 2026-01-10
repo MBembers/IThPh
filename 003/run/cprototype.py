@@ -29,6 +29,7 @@ class Vector2D(Structure):
         """
         data[i, :] = np.array((self.x, self.y))
 
+
 class Vector3D(Structure):
     """
     A ctypes Structure to represent a 3D vector, allowing it
@@ -49,27 +50,33 @@ class Vector3D(Structure):
         """
         data[i, :] = np.array((self.x, self.y, self.z))
 
+
 class EOMSolver:
-    def __init__(self, path, NUMBER_OF_PARTICLES=1, DIMENSIONS=1):
+    def __init__(self, path, NUM_OBJECTS=1, DIMENSIONS=0, NUM_COORDS=0):
         """
         Load a C shared library from the specified path.
         """
         self.lib = cdll.LoadLibrary(path)
-        self.NUMBER_OF_PARTICLES = NUMBER_OF_PARTICLES
+        self.NUM_OBJECTS = NUM_OBJECTS
+        # when DIMENSIONS=0 -> N-coordinate system
         self.DIMENSIONS = DIMENSIONS
-        if DIMENSIONS == 1:
-            self.c_vec_ptr = POINTER(c_float)  # Alias for pointer to Vector1D
+        # Only for N-coordinate systems
+        self.NUM_COORDS = NUM_COORDS
+        if DIMENSIONS == 0:
+            self.c_vec_ptr = POINTER(c_float)  # Alias for pointer to float
+            self._prototype_N()
+        elif DIMENSIONS == 1:
+            self.c_vec_ptr = POINTER(c_float)  # Alias for pointer to Vector1D (float)
             self._prototype_1D()
         elif DIMENSIONS == 2:
-            self.c_vec_ptr = POINTER(Vector2D) # Alias for pointer to Vector2D
+            self.c_vec_ptr = POINTER(Vector2D)  # Alias for pointer to Vector2D
             self._prototype_2D()
         elif DIMENSIONS == 3:
-            self.c_vec_ptr = POINTER(Vector3D) # Alias for pointer to Vector3D
+            self.c_vec_ptr = POINTER(Vector3D)  # Alias for pointer to Vector3D
             self._prototype_3D()
         else:
-            raise ValueError("DIMENSIONS must be 1, 2, or 3.")
+            raise ValueError("DIMENSIONS must be 0, 1, 2, or 3.")
         self.next_step.restype = None
-
 
     def _prototype_1D(self):
         """
@@ -80,7 +87,8 @@ class EOMSolver:
         (IN coord, IN vel, OUT new_(pos|vel), IN dt, IN N)
         """
         self.next_step = self.lib.next_1D
-        self.c_arr = c_float *self.NUMBER_OF_PARTICLES # Alias for pointer to an array of Vector1D
+        # Alias for pointer to an array of Vector1D
+        self.c_arr = c_float * self.NUM_OBJECTS
         self.next_step.argtypes = [self.c_vec_ptr, self.c_vec_ptr,
                                    self.c_vec_ptr, self.c_vec_ptr, c_float, c_int]
 
@@ -92,7 +100,8 @@ class EOMSolver:
         exists in the C library.
         """
         self.next_step = self.lib.next_2D
-        self.c_arr = Vector2D*self.NUMBER_OF_PARTICLES # Alias for pointer to an array of Vector2D
+        # Alias for pointer to an array of Vector2D
+        self.c_arr = Vector2D*self.NUM_OBJECTS
         self.next_step.argtypes = [self.c_vec_ptr, self.c_vec_ptr,
                                    self.c_vec_ptr, self.c_vec_ptr, c_float, c_int]
 
@@ -104,16 +113,30 @@ class EOMSolver:
         exists in the C library.
         """
         self.next_step = self.lib.next_3D
-        self.c_arr= Vector3D*self.NUMBER_OF_PARTICLES # Alias for pointer to an array of Vector3D
+        # Alias for pointer to an array of Vector3D
+        self.c_arr = Vector3D*self.NUM_OBJECTS
         self.next_step.argtypes = [self.c_vec_ptr, self.c_vec_ptr,
                                    self.c_vec_ptr, self.c_vec_ptr, c_float, c_int]
         # assess function exists in the C library.
+
+    def _prototype_N(self):
+        """
+        Prototype the general N-coordinate next step function from the C library.
+        Assuming function
+        `void next_N(float* q, float* dq, float* new_q, float* new_dq, float dt, size_t N);`
+        exists in the C library.
+        (IN q, IN dq, OUT new_(q|dq), IN dt, IN N)
+        """
+        self.next_step = self.lib.next_N
+        self.c_arr = c_float * self.NUM_COORDS # Alias for pointer to an array of floats
+        self.next_step.argtypes = [self.c_vec_ptr, self.c_vec_ptr,
+                                   self.c_vec_ptr, self.c_vec_ptr, c_float, c_int]
 
     def vector(self, x=0.0, y=0.0, z=0.0):
         """
         Create a new vector instance based on the specified DIMENSIONS.
         """
-        if self.DIMENSIONS == 1:
+        if self.DIMENSIONS == 0 or self.DIMENSIONS == 1:
             return c_float(x)
         elif self.DIMENSIONS == 2:
             return Vector2D(x=x, y=y)
@@ -121,5 +144,3 @@ class EOMSolver:
             return Vector3D(x=x, y=y, z=z)
         else:
             raise ValueError("DIMENSIONS must be 1, 2, or 3.")
-
-

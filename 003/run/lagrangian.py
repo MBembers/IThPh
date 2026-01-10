@@ -4,8 +4,10 @@ import sympy as sp
 from sympy.physics.mechanics import LagrangesMethod, dynamicsymbols
 from sympy.printing.c import ccode
 
+
 class LagrangianToC:
     vectorType: str = "float"
+
     def __init__(self, L: sp.Expr,
                  q: List[sp.Expr]) -> None:
         """
@@ -19,7 +21,7 @@ class LagrangianToC:
         self.q = q
         # We don't need to pass velocities explicitly; LagrangesMethod infers q_dot
 
-    def generate_c_function(self, func_name="equations_of_motion", collapse_constants: bool=True) -> str:
+    def generate_c_function(self, func_name="equations_of_motion", collapse_constants: bool = True) -> str:
         """
         Generates a C function string that computes accelerations.
         """
@@ -51,7 +53,8 @@ class LagrangianToC:
         # LM.q contains coordinates, LM.u contains speeds (velocities)
         dynamic_vars = set(LM.q) | set(LM.u) | {dynamicsymbols._t}
 
-        constants = sorted([s for s in all_free if s not in dynamic_vars], key=lambda x: x.name)
+        constants = sorted(
+            [s for s in all_free if s not in dynamic_vars], key=lambda x: x.name)
 
         # 5. Create Symbol Mapping for C-Array access
         # We substitute the sympy symbols with explicit C-string formatted symbols
@@ -73,25 +76,30 @@ class LagrangianToC:
 
         # Function Signature
         if collapse_constants:
-            lines.append(f"void {func_name}({self.vectorType}* q, {self.vectorType}* dq, {self.vectorType}* _dq, {self.vectorType}* _ddq, float t, size_t N) {{")
+            lines.append(
+                f"void {func_name}({self.vectorType}* q, {self.vectorType}* dq, {self.vectorType}* q_dot, {self.vectorType}* dq_dot, float t, size_t N) {{")
         else:
             const_args = ", ".join([f"float {c.name}" for c in constants])
             sig_constants = f", {const_args}" if const_args else ""
-            lines.append(f"void {func_name}({self.vectorType}* q, {self.vectorType}* dq, {self.vectorType}* _dq, {self.vectorType}* _ddq, float t, size_t N{sig_constants}) {{")
-        lines.append("    // Auto-generated Euler-Lagrange Equations using sympy.physics.mechanics")
+            lines.append(
+                f"void {func_name}({self.vectorType}* q, {self.vectorType}* dq, {self.vectorType}* q_dot, {self.vectorType}* dq_dot, float t, size_t N{sig_constants}) {{")
+        lines.append(
+            "    // Auto-generated Euler-Lagrange Equations using sympy.physics.mechanics")
 
         if collapse_constants:
-            lines.append("    // Constants have been collapsed into their values.")
-            for i,c in enumerate(constants):
-                lines.append(f"    float {c.name} = {i}.0{i+1} /* assign proper {c.name} value here */;")
+            lines.append(
+                "    // Constants have been collapsed into their values.")
+            for i, c in enumerate(constants):
+                lines.append(
+                    f"    float {c.name} = {i}.0{i+1} /* assign proper {c.name} value here */;")
         for i, expr in enumerate(accel_exprs):
             # Apply the substitution mapping
             mapped_expr = expr.subs(subs_map)
 
             # Generate C code
             c_str = ccode(mapped_expr)
-            lines.append(f"    _dq[{i}] = dq[{i}];")
-            lines.append(f"    _ddq[{i}] = {c_str};")
+            lines.append(f"    q_dot[{i}] = dq[{i}];")
+            lines.append(f"    dq_dot[{i}] = {c_str};")
 
         lines.append("return;")
         lines.append("}")
@@ -99,20 +107,15 @@ class LagrangianToC:
         return "\n".join(lines)
 
 # ==========================================
-#                                                                        
-#   ▄▄▄▄▄▄▄▄                                          ▄▄▄▄               
-#   ██▀▀▀▀▀▀                                          ▀▀██               
-#   ██        ▀██  ██▀   ▄█████▄  ████▄██▄  ██▄███▄     ██       ▄████▄  
-#   ███████     ████     ▀ ▄▄▄██  ██ ██ ██  ██▀  ▀██    ██      ██▄▄▄▄██ 
-#   ██          ▄██▄    ▄██▀▀▀██  ██ ██ ██  ██    ██    ██      ██▀▀▀▀▀▀ 
-#   ██▄▄▄▄▄▄   ▄█▀▀█▄   ██▄▄▄███  ██ ██ ██  ███▄▄██▀    ██▄▄▄   ▀██▄▄▄▄█ 
-#   ▀▀▀▀▀▀▀▀  ▀▀▀  ▀▀▀   ▀▀▀▀ ▀▀  ▀▀ ▀▀ ▀▀  ██ ▀▀▀       ▀▀▀▀     ▀▀▀▀▀  
-#                                           ██                           
-#                                                                        
 # run as: python3 -m lagrangian
 # ==========================================
 
-if __name__ == "__main__":
+#
+# Example usages of LagrangianToC:
+#
+
+
+def simple_pendulum_example():
 
     # --- Example 1: Simple Pendulum ---
     print("--- Generating Code for Simple Pendulum ---")
@@ -123,6 +126,9 @@ if __name__ == "__main__":
 
     # 2. Define Constants
     m, g, l = sp.symbols('m g l')
+    g = 9.81  # gravitational acceleration
+    m = 1.0   # mass
+    l = 1.0   # length of pendulum
 
     # 3. Define Energies
     # Kinetic T = 1/2 m (l * theta_dot)^2
@@ -135,8 +141,14 @@ if __name__ == "__main__":
     # 4. Generate
     # Note: We only pass L and the coordinate list [theta]
     gen = LagrangianToC(L, [theta])
-    print(gen.generate_c_function("pendulum_step"))
-    print("\n")
+    # print(gen.generate_c_function("func"))
+    # print("\n")
+    output = gen.generate_c_function(
+        "func", collapse_constants=True)
+    return output
+
+
+def double_pendulum_example():
 
     # --- Example 2: Double Pendulum (Demonstrating Matrix Solving Capability) ---
     print("--- Generating Code for Double Pendulum ---")
@@ -147,6 +159,12 @@ if __name__ == "__main__":
 
     # Constants
     m1, m2, l1, l2 = sp.symbols('m1 m2 l1 l2')
+    g = sp.symbols('g')
+    m1 = 1.0
+    m2 = 1.0
+    l1 = 1.0
+    l2 = 1.0
+    g = 9.81
 
     # Position of mass 1
     x1 = l1 * sp.sin(q1)
@@ -168,4 +186,12 @@ if __name__ == "__main__":
     L_dp = T_dp - V_dp
 
     gen2 = LagrangianToC(L_dp, [q1, q2])
-    print(gen2.generate_c_function("double_pendulum_step",collapse_constants=False))
+    output = gen2.generate_c_function(
+        "func", collapse_constants=True)
+    return output
+
+
+if __name__ == "__main__":
+    with open("../solver/func_generated.txt", "w") as file:
+        file.write("// Double Pendulum Example\n")
+        file.write(double_pendulum_example())
