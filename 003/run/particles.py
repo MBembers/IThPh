@@ -43,7 +43,8 @@ ani = anim.Animation2D(vector_factory=_libsolver.vector,
                         DIMENSIONS=config.DIMENSIONS,
                         NUM_OBJECTS=config.NUMBER_OF_OBJECTS,
                         POINTS_PER_OBJECT=config.POINTS_PER_OBJECT,
-                        change_coordinates=config.coordinates_transform)  # Each double pendulum has 2 points
+                        change_coordinates=config.coordinates_transform,
+                        CONNECT_TYPE=config.CONNECTION_TYPE)  # Each double pendulum has 2 points
 ani.create_canvas()
 
 # === RUN ANIMATION ===

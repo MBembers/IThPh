@@ -1,6 +1,7 @@
 import sympy as sp
 from sympy.physics.mechanics import dynamicsymbols as ds
 import numpy as np
+from animation import ConnectionType
 
 # === CONFIGURATION PARAMETERS ===
 # Number of systems to run simultaneously TODO: make this configurable
@@ -17,6 +18,8 @@ NUMBER_OF_COORDINATES = 2
 # Timestep for the simulation
 DT = 0.01  
 
+# === PLOTTING CONFIG ===
+CONNECTION_TYPE = ConnectionType.BETWEEN_POINTS_AND_ORIGIN
 # === INITIAL CONDITIONS ===
 # WORKS ONLY IF DIMENSIONS = 0 OTHERWISE DEFINE MANUALLY IN PARTICLES.PY
 # Define initial conditions in the same order as in lagrangian function

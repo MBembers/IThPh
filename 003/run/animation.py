@@ -1,6 +1,7 @@
 # === IMPORTS ===
 # Standard library imports
 import itertools as it
+import enum
 
 # Numpy (https://numpy.org/)
 # and ctypes (https://docs.python.org/3/library/ctypes.html)
@@ -12,11 +13,15 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.animation as animation
 
-
+class ConnectionType(enum.Enum):
+    NONE = 0
+    BETWEEN_POINTS = 1
+    BETWEEN_POINTS_AND_ORIGIN = 2
+    
 class Animation2D:
     def __init__(self,vector_factory=None, c_arr=None,
                  next_step=None,positions=None, velocities=None,
-                 dt=0.01, DIMENSIONS=2, NUM_OBJECTS=1, POINTS_PER_OBJECT=1, change_coordinates=None):
+                 dt=0.01, DIMENSIONS=2, NUM_OBJECTS=1, POINTS_PER_OBJECT=1, CONNECT_TYPE=ConnectionType.NONE, change_coordinates=None):
         self.data = np.zeros((NUM_OBJECTS * POINTS_PER_OBJECT, 2))
 
         self.vector = vector_factory
@@ -30,6 +35,7 @@ class Animation2D:
         self.DIMENSIONS = DIMENSIONS
         self.NUM_OBJECTS = NUM_OBJECTS
         self.POINTS_PER_OBJECT = POINTS_PER_OBJECT
+        self.CONNECT_TYPE = CONNECT_TYPE
         self.flag = True
 
     def set_positions(self, positions):
@@ -62,23 +68,41 @@ class Animation2D:
             kwargs['ylabel']='y'
         self.ax.set(**kwargs)
         
-        if self.POINTS_PER_OBJECT > 1:
-            # Append first point to close the loop
-            self.lines = self.ax.plot(np.append(self.data[:, 0], self.data[0, 0]),
-                                      np.append(self.data[:, 1], self.data[0, 1]), lw=1)[0]
+        # refactor
+        
+        xpos = []
+        ypos = []
+        
+        if self.CONNECT_TYPE in [ConnectionType.BETWEEN_POINTS_AND_ORIGIN, ConnectionType.BETWEEN_POINTS]:
+            for i in range(self.NUM_OBJECTS):
+                if self.CONNECT_TYPE is ConnectionType.BETWEEN_POINTS_AND_ORIGIN:
+                    xpos.append(0)
+                    ypos.append(0)
+                for j in range(self.POINTS_PER_OBJECT):
+                    idx = i * self.POINTS_PER_OBJECT + j
+                    xpos.append(self.data[idx, 0])
+                    ypos.append(self.data[idx, 1])
+            # 'lines' is a Line2D object connecting the points
+            self.lines, = self.ax.plot(xpos, ypos, 'o-', lw=2, color='gray')
+        else:
+            self.lines = None
         # 'points' is a scatter plot of the particles themselves
         self.points = self.ax.scatter(self.data[:, 0], self.data[:, 1],
                       c=[clr for clr, _ in zip(self.colours, range(self.NUM_OBJECTS))], s=57)
     
     def update_lines(self):
-        """
-        Update the lines connecting points if there are multiple points per object.
-        """
-        # TODO: Connect first to origin (optional) and generalize for multiple objects
-            
-        if self.POINTS_PER_OBJECT > 1:
-            self.lines.set_data(np.append(self.data[:, 0], self.data[0, 0]),
-                                np.append(self.data[:, 1], self.data[0, 1]))
+        if self.lines is not None:
+            xpos = []
+            ypos = []
+            for i in range(self.NUM_OBJECTS):
+                if self.CONNECT_TYPE is ConnectionType.BETWEEN_POINTS_AND_ORIGIN:
+                    xpos.append(0)
+                    ypos.append(0)
+                for j in range(self.POINTS_PER_OBJECT):
+                    idx = i * self.POINTS_PER_OBJECT + j
+                    xpos.append(self.data[idx, 0])
+                    ypos.append(self.data[idx, 1])
+            self.lines.set_data(xpos, ypos)
 
     def update_frame(self, frame):
         """
@@ -138,9 +162,9 @@ class Animation2D:
 
         # --- Update Matplotlib elements ---
         # Update the positions of the scattered points
+        self.update_lines()
         self.points.set_offsets(self.data)
 
-        self.update_lines()
 
     def run_animation(self,frames=60,interval=30):
         self.ani = animation.FuncAnimation(fig=self.fig, func=self.update_frame,
