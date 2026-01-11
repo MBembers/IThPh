@@ -28,19 +28,25 @@ class Animation2D:
         self.c_arr = c_arr
         self.next_step = next_step
         self.change_coordinates = change_coordinates
-        self.set_positions(positions)
-        self.set_velocities(velocities)
-        self.colours = it.cycle(mcolors.TABLEAU_COLORS)
         self.dt = dt
         self.DIMENSIONS = DIMENSIONS
         self.NUM_OBJECTS = NUM_OBJECTS
         self.POINTS_PER_OBJECT = POINTS_PER_OBJECT
         self.CONNECT_TYPE = CONNECT_TYPE
         self.flag = True
+        self.set_positions(positions)
+        self.set_velocities(velocities)
+       
+
+    def update_data(self, new_data):
+        for i in range(self.NUM_OBJECTS):
+            for j in range(self.POINTS_PER_OBJECT):
+                idx = i * self.POINTS_PER_OBJECT + j
+                self.data[idx, 0] = new_data[idx][0]
+                self.data[idx, 1] = new_data[idx][1]
 
     def set_positions(self, positions):
         self.positions = positions
-                # 3. Update the data plotting array
         if self.change_coordinates is None:
             self.update_data(self.positions)
         else:
@@ -68,13 +74,15 @@ class Animation2D:
             kwargs['ylabel']='y'
         self.ax.set(**kwargs)
         
-        # refactor
+        self.colors = list(clr for clr, _ in zip(it.cycle(mcolors.TABLEAU_COLORS), range(self.NUM_OBJECTS)))
         
-        xpos = []
-        ypos = []
+
+        self.lines = []
         
         if self.CONNECT_TYPE in [ConnectionType.BETWEEN_POINTS_AND_ORIGIN, ConnectionType.BETWEEN_POINTS]:
             for i in range(self.NUM_OBJECTS):
+                xpos = []
+                ypos = []
                 if self.CONNECT_TYPE is ConnectionType.BETWEEN_POINTS_AND_ORIGIN:
                     xpos.append(0)
                     ypos.append(0)
@@ -82,19 +90,22 @@ class Animation2D:
                     idx = i * self.POINTS_PER_OBJECT + j
                     xpos.append(self.data[idx, 0])
                     ypos.append(self.data[idx, 1])
-            # 'lines' is a Line2D object connecting the points
-            self.lines, = self.ax.plot(xpos, ypos, 'o-', lw=2, color='gray')
+                self.lines.append(self.ax.plot(xpos, ypos, '-', lw=2, color=self.colors[i])[0])
         else:
             self.lines = None
-        # 'points' is a scatter plot of the particles themselves
+        # self.points is a list of scatter plot points for each object
+        points_colors = []
+        for i in range(self.NUM_OBJECTS):
+            for _ in range(self.POINTS_PER_OBJECT):
+                points_colors.append(self.colors[i])
         self.points = self.ax.scatter(self.data[:, 0], self.data[:, 1],
-                      c=[clr for clr, _ in zip(self.colours, range(self.NUM_OBJECTS))], s=57)
+                                      c=points_colors, s=57)
     
     def update_lines(self):
         if self.lines is not None:
-            xpos = []
-            ypos = []
             for i in range(self.NUM_OBJECTS):
+                xpos = []
+                ypos = []
                 if self.CONNECT_TYPE is ConnectionType.BETWEEN_POINTS_AND_ORIGIN:
                     xpos.append(0)
                     ypos.append(0)
@@ -102,57 +113,46 @@ class Animation2D:
                     idx = i * self.POINTS_PER_OBJECT + j
                     xpos.append(self.data[idx, 0])
                     ypos.append(self.data[idx, 1])
-            self.lines.set_data(xpos, ypos)
+                self.lines[i].set_data(xpos, ypos)
 
     def update_frame(self, frame):
         """
         This function is called for each frame of the animation.
         It calculates the new state of the simulation and updates the plot.
         """
-        global positions,velocities
+        for i in range(self.NUM_OBJECTS):
+            # Create empty Vector2D objects to hold the C function results
+            new_positions, new_velocities = [], []
+            if self.DIMENSIONS == 0 or self.DIMENSIONS == 1:
+                new_positions  = [self.vector(0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_velocities = [self.vector(0) for _ in range(self.POINTS_PER_OBJECT)]
+            elif self.DIMENSIONS == 2:
+                new_positions  = [self.vector(x=0, y=0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_velocities = [self.vector(x=0, y=0) for _ in range(self.POINTS_PER_OBJECT)]
+            elif self.DIMENSIONS == 3:
+                new_positions  = [self.vector(x=0, y=0, z=0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_velocities = [self.vector(x=0, y=0, z=0) for _ in range(self.POINTS_PER_OBJECT)]
 
-        # Create empty Vector2D objects to hold the C function results
-        new_positions, new_velocities = [], []
-        if self.DIMENSIONS == 0 or self.DIMENSIONS == 1:
-            new_positions  = [self.vector(0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
-            new_velocities = [self.vector(0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
-        elif self.DIMENSIONS == 2:
-            new_positions  = [self.vector(x=0, y=0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
-            new_velocities = [self.vector(x=0, y=0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
-        elif self.DIMENSIONS == 3:
-            new_positions  = [self.vector(x=0, y=0, z=0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
-            new_velocities = [self.vector(x=0, y=0, z=0) for _ in range(self.NUM_OBJECTS * self.POINTS_PER_OBJECT)]
+            # Convert Python lists to C arrays
+            c_positions       = self.c_arr(*self.positions[i])
+            c_velocities      = self.c_arr(*self.velocities[i])
+            c_new_positions   = self.c_arr(*new_positions)
+            c_new_velocities  = self.c_arr(*new_velocities)
 
-        # Convert Python lists to C arrays
-        if self.flag:
-            print("Python arrays:")
-            print("Positions:", self.positions)
-        c_positions       = self.c_arr(*self.positions)
-        c_velocities      = self.c_arr(*self.velocities)
-        c_new_positions   = self.c_arr(*new_positions)
-        c_new_velocities  = self.c_arr(*new_velocities)
+            # 1. Calculate the new positions and velocities
+            self.next_step(c_positions, c_velocities,
+                        c_new_positions, c_new_velocities,
+                        self.dt, self.POINTS_PER_OBJECT)
+            
+            new_positions   = c_new_positions[:]
+            new_velocities  = c_new_velocities[:]
 
-        # 1. Calculate the new positions and velocities
-        self.next_step(c_positions, c_velocities,
-                       c_new_positions, c_new_velocities,
-                       self.dt, self.POINTS_PER_OBJECT)
-        
-        self.positions  = c_positions[:]
-        self.velocities = c_velocities[:]
-        new_positions   = c_new_positions[:]
-        new_velocities  = c_new_velocities[:]
+            # 2. Update the master Python lists with the new state
+            for k in range(len(new_positions)):
+                self.positions[i][k]  = new_positions[k]
+                self.velocities[i][k] = new_velocities[k]
 
-        if self.flag:
-            print("Python arrays after step:")
-            print("Positions:", self.positions)
-            print("New positions:", new_positions)
-            self.flag = False
-
-        # 2. Update the master Python lists with the new state
-        for i,new_position in enumerate(new_positions):
-            self.positions[i]  = new_position
-            self.velocities[i] = new_velocities[i]
-
+        # TODO: finish adding multiple objects support
         # 3. Update the data plotting array
         if self.change_coordinates is None:
             self.update_data(self.positions)
@@ -170,7 +170,3 @@ class Animation2D:
         self.ani = animation.FuncAnimation(fig=self.fig, func=self.update_frame,
                                            frames=frames , interval=interval)
         plt.show()
-
-    def update_data(self, new_data):
-        for i, coord in enumerate(new_data):
-            self.data[i, :] = [coord[0], coord[1]]

@@ -4,8 +4,8 @@ import numpy as np
 from animation import ConnectionType
 
 # === CONFIGURATION PARAMETERS ===
-# Number of systems to run simultaneously TODO: make this configurable
-NUMBER_OF_OBJECTS = 1 
+# Number of systems to run simultaneously
+NUMBER_OF_OBJECTS = 1
 # Number of points to plot per object (e.g., double pendulum has 2 points) 
 POINTS_PER_OBJECT = 2 
 # Dimensionality of the system, 0 for non-cartesian coordinates, 
@@ -20,12 +20,13 @@ DT = 0.01
 
 # === PLOTTING CONFIG ===
 CONNECTION_TYPE = ConnectionType.BETWEEN_POINTS_AND_ORIGIN
+
 # === INITIAL CONDITIONS ===
 # WORKS ONLY IF DIMENSIONS = 0 OTHERWISE DEFINE MANUALLY IN PARTICLES.PY
 # Define initial conditions in the same order as in lagrangian function
-# e.g., for double pendulum: [theta1, theta2] and [dtheta1, dtheta2]
-INITIAL_q = [np.pi/2, np.pi] 
-INITIAL_dq = [0.0, 0.0]
+# e.g., for double pendulum: [[theta1, theta2]] and [[dtheta1, dtheta2]]
+INITIAL_q = [[0.0, np.pi/2], [np.pi/3, np.pi]] 
+INITIAL_dq = [[0.0, 0.0], [0.0, 0.0]]
 
 # === LAGRANGIAN DEFINITION ===
 # Define the Lagrangian of the system and return it along with the list of generalized coordinates
@@ -74,17 +75,16 @@ def lagrangian():
 # === COORDINATE TRANSFORMATION FOR PLOTTING ===
 # Needed only if DIMENSIONS = 0
 # Function to convert generalized coordinates to Cartesian for plotting
-# coordinates_list = [q1, q2, ...]
+# coordinates_list = [[q1, q2, ...], [q1, q2, ...], ...]
 # returns list of [x, y] points 
 # e.g. return coords = [[x1, y1], [x2, y2], ...]
 def coordinates_transform(coordinates_list):
-    
     r1 = 1.0  # Length of first rod
     r2 = 1.0  # Length of second rod
     coords = []
-    for i in range(len(coordinates_list)//2):
-        theta1 = coordinates_list[2*i]
-        theta2 = coordinates_list[2*i + 1]
+    for i in range(len(coordinates_list)):
+        theta1 = coordinates_list[i][0]
+        theta2 = coordinates_list[i][1]
         x1 = r1 * np.sin(theta1)
         y1 = -r1 * np.cos(theta1)
         x2 = x1 + r2 * np.sin(theta2)

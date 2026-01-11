@@ -29,9 +29,16 @@ _libsolver = cp.EOMSolver(__solver_path, NUM_OBJECTS=config.NUMBER_OF_OBJECTS,
 # AUTOMATIC GENERATION ONLY FOR GENERALIZED COORDINATES!!!
 q = []
 dq = []
-for i in range(config.NUMBER_OF_COORDINATES * config.NUMBER_OF_OBJECTS):
-    q.append(_libsolver.vector(config.INITIAL_q[i]))
-    dq.append(_libsolver.vector(config.INITIAL_dq[i]))
+for i in range(config.NUMBER_OF_OBJECTS):
+    tmp_q = []
+    tmp_dq = []
+    for j in range(config.NUMBER_OF_COORDINATES):
+        tmp_q.append(_libsolver.vector(config.INITIAL_q[i][j]))
+        tmp_dq.append(_libsolver.vector(config.INITIAL_dq[i][j]))
+    q.append(tmp_q)
+    dq.append(tmp_dq)
+
+transform_func = config.coordinates_transform if config.DIMENSIONS == 0 else None
 
 # === PLOTTING SETUP ===
 ani = anim.Animation2D(vector_factory=_libsolver.vector,
@@ -43,7 +50,7 @@ ani = anim.Animation2D(vector_factory=_libsolver.vector,
                         DIMENSIONS=config.DIMENSIONS,
                         NUM_OBJECTS=config.NUMBER_OF_OBJECTS,
                         POINTS_PER_OBJECT=config.POINTS_PER_OBJECT,
-                        change_coordinates=config.coordinates_transform,
+                        change_coordinates=transform_func,
                         CONNECT_TYPE=config.CONNECTION_TYPE)  # Each double pendulum has 2 points
 ani.create_canvas()
 
