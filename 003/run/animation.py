@@ -21,7 +21,7 @@ class ConnectionType(enum.Enum):
 class Animation2D:
     def __init__(self,vector_factory=None, c_arr=None,
                  next_step=None,positions=None, velocities=None,
-                 dt=0.01, DIMENSIONS=2, NUM_OBJECTS=1, POINTS_PER_OBJECT=1, CONNECT_TYPE=ConnectionType.NONE, change_coordinates=None):
+                 dt=0.01, DIMENSIONS=2, NUM_OBJECTS=1, POINTS_PER_OBJECT=1, NUMBER_OF_COORDINATES=0, CONNECT_TYPE=ConnectionType.NONE, change_coordinates=None):
         self.data = np.zeros((NUM_OBJECTS * POINTS_PER_OBJECT, 2))
 
         self.vector = vector_factory
@@ -33,7 +33,13 @@ class Animation2D:
         self.NUM_OBJECTS = NUM_OBJECTS
         self.POINTS_PER_OBJECT = POINTS_PER_OBJECT
         self.CONNECT_TYPE = CONNECT_TYPE
-        self.flag = True
+        self.NUM_COORD = NUMBER_OF_COORDINATES
+
+        # convert c_float to python float if needed
+        if type(positions[0][0]) is not float:
+            for i in range(self.NUM_OBJECTS):
+                for j in range(self.NUM_COORD):
+                    positions[i][j] = positions[i][j].value
         self.set_positions(positions)
         self.set_velocities(velocities)
        
@@ -124,14 +130,14 @@ class Animation2D:
             # Create empty Vector2D objects to hold the C function results
             new_positions, new_velocities = [], []
             if self.DIMENSIONS == 0 or self.DIMENSIONS == 1:
-                new_positions  = [self.vector(0) for _ in range(self.POINTS_PER_OBJECT)]
-                new_velocities = [self.vector(0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_positions  = [self.vector(0) for _ in range(self.NUM_COORD)]
+                new_velocities = [self.vector(0) for _ in range(self.NUM_COORD)]
             elif self.DIMENSIONS == 2:
-                new_positions  = [self.vector(x=0, y=0) for _ in range(self.POINTS_PER_OBJECT)]
-                new_velocities = [self.vector(x=0, y=0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_positions  = [self.vector(x=0, y=0) for _ in range(self.NUM_COORD)]
+                new_velocities = [self.vector(x=0, y=0) for _ in range(self.NUM_COORD)]
             elif self.DIMENSIONS == 3:
-                new_positions  = [self.vector(x=0, y=0, z=0) for _ in range(self.POINTS_PER_OBJECT)]
-                new_velocities = [self.vector(x=0, y=0, z=0) for _ in range(self.POINTS_PER_OBJECT)]
+                new_positions  = [self.vector(x=0, y=0, z=0) for _ in range(self.NUM_COORD)]
+                new_velocities = [self.vector(x=0, y=0, z=0) for _ in range(self.NUM_COORD)]
 
             # Convert Python lists to C arrays
             c_positions       = self.c_arr(*self.positions[i])
@@ -142,7 +148,7 @@ class Animation2D:
             # 1. Calculate the new positions and velocities
             self.next_step(c_positions, c_velocities,
                         c_new_positions, c_new_velocities,
-                        self.dt, self.POINTS_PER_OBJECT)
+                        self.dt, self.NUM_COORD)
             
             new_positions   = c_new_positions[:]
             new_velocities  = c_new_velocities[:]
@@ -152,7 +158,6 @@ class Animation2D:
                 self.positions[i][k]  = new_positions[k]
                 self.velocities[i][k] = new_velocities[k]
 
-        # TODO: finish adding multiple objects support
         # 3. Update the data plotting array
         if self.change_coordinates is None:
             self.update_data(self.positions)
@@ -170,3 +175,4 @@ class Animation2D:
         self.ani = animation.FuncAnimation(fig=self.fig, func=self.update_frame,
                                            frames=frames , interval=interval)
         plt.show()
+        print("Animation finished.")
