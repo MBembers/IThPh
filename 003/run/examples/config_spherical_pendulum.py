@@ -7,7 +7,7 @@ from animation import ConnectionType
 
 # === CONFIGURATION PARAMETERS ===
 # Number of systems to run simultaneously
-NUMBER_OF_OBJECTS = 2
+NUMBER_OF_OBJECTS = 1
 # Number of points to plot per object (spherical pendulum has 1 point - the mass)
 POINTS_PER_OBJECT = 1 
 # Dimensionality of the system, 0 for non-cartesian coordinates, 
@@ -27,8 +27,8 @@ CONNECTION_TYPE = ConnectionType.BETWEEN_POINTS_AND_ORIGIN
 # WORKS ONLY IF DIMENSIONS = 0 OTHERWISE DEFINE MANUALLY IN PARTICLES.PY
 # Define initial conditions in the same order as in lagrangian function
 # theta: polar angle from vertical, phi: azimuthal angle
-INITIAL_q = [[np.pi/4, np.pi/3], [np.pi/6, np.pi/2]] 
-INITIAL_dq = [[0.0, 0.0], [0.0, 10.0]]
+INITIAL_q = [[np.pi/4, 0.0], [np.pi/6, np.pi/2]] 
+INITIAL_dq = [[0.0, 0.0], [0.0, 0.0]]
 
 # === LAGRANGIAN DEFINITION ===
 # Define the Lagrangian of the system and return it along with the list of generalized coordinates
