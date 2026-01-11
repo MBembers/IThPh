@@ -9,13 +9,8 @@ from animation import ConnectionType
 # Number of systems to run simultaneously
 NUMBER_OF_OBJECTS = 2
 # Number of points to plot per object (spring pendulum has 1 point - the mass)
-POINTS_PER_OBJECT = 1 
-# Dimensionality of the system, 0 for non-cartesian coordinates, 
-# 1 for 1D, 2 for 2D, 3 for 3D
-# use 1D,2D,3D only when lagrangian is defined in cartesian coordinates
-DIMENSIONS = 0
-# Number of generalized coordinates per object (only for DIMENSIONS=0)
-# Otherwise set to 0
+POINTS_PER_OBJECT = 1
+# Number of generalized coordinates per object
 NUMBER_OF_COORDINATES = 2
 # Timestep for the simulation
 DT = 0.01  
@@ -24,7 +19,6 @@ DT = 0.01
 CONNECTION_TYPE = ConnectionType.BETWEEN_POINTS_AND_ORIGIN
 
 # === INITIAL CONDITIONS ===
-# WORKS ONLY IF DIMENSIONS = 0 OTHERWISE DEFINE MANUALLY IN PARTICLES.PY
 # Define initial conditions in the same order as in lagrangian function
 # r: radial distance (length of spring), theta: angle from vertical
 INITIAL_q = [[1, np.pi+0.01], [1.2, np.pi/3]] 
@@ -61,7 +55,6 @@ def lagrangian():
     return L, [r, theta]
 
 # === COORDINATE TRANSFORMATION FOR PLOTTING ===
-# Needed only if DIMENSIONS = 0
 # Function to convert generalized coordinates to Cartesian for plotting
 # Polar coordinates (r, theta) -> (x, y) in Cartesian
 def coordinates_transform(coordinates_list):
