@@ -1,10 +1,4 @@
 # === IMPORTS ===
-# Standard library imports
-from sys import argv
-
-# Third party imports
-import numpy as np
-
 # Local imports
 import cprototype as cp
 import animation as anim
@@ -25,29 +19,28 @@ __solver_path = ccompiler.compile()
 # === INITIAL CONDITIONS ===
 # DOUBLE PENDULUM
 _libsolver = cp.EOMSolver(__solver_path, NUM_OBJECTS=config.NUMBER_OF_OBJECTS, 
-                          DIMENSIONS=config.DIMENSIONS, NUM_COORDS=config.NUMBER_OF_COORDINATES)
+                          NUM_COORDS=config.NUMBER_OF_COORDINATES)
 # AUTOMATIC GENERATION ONLY FOR GENERALIZED COORDINATES!!!
 q = []
 dq = []
 for i in range(config.NUMBER_OF_OBJECTS):
-    tmp_q = []
+    tmp_q = [] 
     tmp_dq = []
     for j in range(config.NUMBER_OF_COORDINATES):
-        tmp_q.append(_libsolver.vector(config.INITIAL_q[i][j]))
-        tmp_dq.append(_libsolver.vector(config.INITIAL_dq[i][j]))
+        tmp_q.append(_libsolver.c_type(config.INITIAL_q[i][j]))
+        tmp_dq.append(_libsolver.c_type(config.INITIAL_dq[i][j]))
     q.append(tmp_q)
     dq.append(tmp_dq)
 
-transform_func = config.coordinates_transform if config.DIMENSIONS == 0 else None
+transform_func = config.coordinates_transform
 
 # === PLOTTING SETUP ===
-ani = anim.Animation2D(vector_factory=_libsolver.vector,
+ani = anim.Animation2D(type_factory=_libsolver.c_type,
                         c_arr=_libsolver.c_arr,
                         next_step=_libsolver.next_step,
                         positions=q,
                         velocities=dq,
                         dt=config.DT,
-                        DIMENSIONS=config.DIMENSIONS,
                         NUM_OBJECTS=config.NUMBER_OF_OBJECTS,
                         POINTS_PER_OBJECT=config.POINTS_PER_OBJECT,
                         NUMBER_OF_COORDINATES=config.NUMBER_OF_COORDINATES,
@@ -56,6 +49,5 @@ ani = anim.Animation2D(vector_factory=_libsolver.vector,
 ani.create_canvas()
 
 # === RUN ANIMATION ===
-print(f"Running simulation with {config.NUMBER_OF_OBJECTS} \
-      objects and {ani.POINTS_PER_OBJECT * config.NUMBER_OF_OBJECTS} points.")
+print(f"Running simulation with {config.NUMBER_OF_OBJECTS} objects and {ani.POINTS_PER_OBJECT * config.NUMBER_OF_OBJECTS} points.")
 ani.run_animation()
