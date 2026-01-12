@@ -31,7 +31,7 @@ venv\Scripts\activate
 Install all required packages from the requirements file:
 
 ```bash
-pip install -r requirements.txt
+pip install -r run/requirements.txt
 ```
 
 ## Configuration
@@ -64,7 +64,7 @@ The `run/examples/` directory contains several pre-configured example systems:
 To use an example configuration, copy the desired example file to `run/config.py`:
 
 ```bash
-cp examples/example_spring_pendulum.py config.py
+cp examples/config_spring_pendulum.py config.py
 ```
 
 ## Configuration Reference

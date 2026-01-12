@@ -26,7 +26,7 @@ INITIAL_dq = [[0.0, 0.0], [0.0, 0.0]]
 
 # === LAGRANGIAN DEFINITION ===
 # Define the Lagrangian of the system and return it along with the list of generalized coordinates
-# q1, q1, ... are dynamicsymbols
+# q1, q2, ... are dynamicsymbols
 # L = T - V
 # return L, [q1, q2, ...]
 def lagrangian():
